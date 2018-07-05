@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         NewsPics UI Enhancement
 // @namespace    http://yamashita109.pw/
-// @version      0.1
+// @version      0.2
 // @description  Make NewsPics better.
 // @author       Boarnasia <masato.uehara.1975@gmail.com>
 // @match        https://newspicks.com/*
@@ -16,6 +16,13 @@
 
     if (window.location.pathname.match(/^\/news\//)) return
 
+    // ヘッダの固定
+    if ($('.page-title').length) {
+        $('.page-title').addClass('breadcrumbs')
+        $('.left-block').css({marginTop: 32})
+    }
+
+    // リンクの追加処理
     const get_links = () => {
         const links = $(`.menu .theme_menu a.menu-item`)
         const ret = []
