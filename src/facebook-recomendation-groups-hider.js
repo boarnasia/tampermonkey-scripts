@@ -5,8 +5,8 @@
 // @description  Facebookのフィード上に表示される「おすすめのグループ」セクションを自動的に非表示にします。
 // @author       Masato Uehara <masato.uehara.1975@gmail.com>
 // @match        https://*.facebook.com/*
-// @updateURL    https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/master/src/facebook-recomendation-groups-hider.js
-// @downloadURL  https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/master/src/facebook-recomendation-groups-hider.js
+// @updateURL    https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/main/src/facebook-recomendation-groups-hider.js
+// @downloadURL  https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/main/src/facebook-recomendation-groups-hider.js
 // @grant        none
 // @run-at       document-end
 // ==/UserScript==

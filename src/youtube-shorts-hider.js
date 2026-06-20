@@ -5,8 +5,8 @@
 // @description  YouTubeの画面からショート動画（Shorts）のセクションや動画を非表示にします。
 // @author       Masato Uehara <masato.uehara.1975@gmail.com>
 // @match        https://www.youtube.com/*
-// @updateURL    https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/master/src/youtube-shorts-hider.js
-// @downloadURL  https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/master/src/youtube-shorts-hider.js
+// @updateURL    https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/main/src/youtube-shorts-hider.js
+// @downloadURL  https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/main/src/youtube-shorts-hider.js
 // @grant        none
 // @run-at       document-start
 // ==/UserScript==
