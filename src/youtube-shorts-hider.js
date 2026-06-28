@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube Shorts 非表示スクリプト
 // @namespace    http://yamashita109.com/
-// @version      1.1
+// @version      1.2
 // @description  MutationObserverで動的に出現するショート動画を確実に検知。requestAnimationFrameで負荷を抑えつつ完全に非表示にします。
 // @author       Masato Uehara
 // @updateURL    https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/main/src/youtube-shorts-hider.js
@@ -14,86 +14,105 @@
 (function () {
   "use strict";
 
+  // 1. 静的なCSS注入（あらかじめ分かっている専用要素を最速で非表示にしてちらつきを防ぐ）
+  const injectCSS = () => {
+    if (document.getElementById("hide-shorts-style")) return;
+    const style = document.createElement("style");
+    style.id = "hide-shorts-style";
+    style.textContent = `
+      /* 検索結果ページのショート専用棚 */
+      ytd-reel-shelf-renderer,
+      /* トップページのショート専用棚(属性指定) */
+      ytd-rich-shelf-renderer[is-shorts],
+      /* サイドバーのショートタブ等 */
+      ytd-guide-entry-renderer:has(a[href*="/shorts"]),
+      ytd-mini-guide-entry-renderer:has(a[href*="/shorts"]),
+      yt-tab-shape[tab-title="Shorts"],
+      yt-tab-shape[tab-title="ショート"] {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  };
+
   let isThrottled = false;
 
-  // 非表示にするメイン処理
+  // 2. 動的・複合的な構造の非表示メイン処理
   const hideShorts = () => {
-    // 1. ショート動画へのリンク（/shorts/）を持つすべての要素を検索
-    const shortsLinks = document.querySelectorAll(
-      'a[href*="/shorts/"], a[href^="/shorts"]',
-    );
 
-    shortsLinks.forEach((link) => {
-      // 【重要】ショート動画の「棚（セクション全体）」があれば、最優先で棚ごと非表示にする
-      const shelfElement = link.closest(
-        "ytd-reel-shelf-renderer, ytd-rich-shelf-renderer, ytd-rich-section-renderer",
-      );
-      if (shelfElement) {
-        shelfElement.style.setProperty("display", "none", "important");
-        return; // 棚ごと消した場合は、その中の個別動画の処理はスキップ
-      }
-
-      // 【個別】検索結果や関連動画に単体で紛れ込んだショート動画カードを非表示にする
-      const videoElement = link.closest(
-        "ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, ytd-reel-item-renderer",
-      );
-      if (videoElement) {
-        videoElement.style.setProperty("display", "none", "important");
-      }
-    });
-
-    // 2. 左ナビゲーションメニューなどの「ショート」タブを非表示にする
-    const sidebarLinks = document.querySelectorAll(
-      'ytd-guide-entry-renderer a[href*="/shorts"], ytd-mini-guide-entry-renderer a[href*="/shorts"]',
-    );
-    sidebarLinks.forEach((link) => {
-      const sidebarItem = link.closest(
-        "ytd-guide-entry-renderer, ytd-mini-guide-entry-renderer",
-      );
-      if (sidebarItem) {
-        sidebarItem.style.setProperty("display", "none", "important");
-      }
-    });
-
-    // 3. テキストに「ショート」や「Shorts」が含まれる棚の最終チェック（文字判定による補網）
-    const genericShelves = document.querySelectorAll(
-      "ytd-reel-shelf-renderer, ytd-rich-shelf-renderer, ytd-rich-section-renderer",
-    );
-    genericShelves.forEach((shelf) => {
+    // ----------------------------------------------------
+    // 対応①：トップページ（ホーム画面などのグリッド構造）への対応
+    // ----------------------------------------------------
+    // ショートの棚を見つけたら、その親である「行（セクション全体）」ごと非表示にして空白を残さない
+    const topPageShelves = document.querySelectorAll('ytd-rich-shelf-renderer');
+    topPageShelves.forEach((shelf) => {
       const text = shelf.innerText || "";
-      if (text.includes("ショート") || text.toLowerCase().includes("shorts")) {
+      if (shelf.hasAttribute('is-shorts') || text.includes("ショート") || text.toLowerCase().includes("shorts")) {
+        const parentSection = shelf.closest('ytd-rich-section-renderer');
+        if (parentSection) {
+          parentSection.style.setProperty("display", "none", "important");
+        } else {
+          shelf.style.setProperty("display", "none", "important");
+        }
+      }
+    });
+
+    // ----------------------------------------------------
+    // 対応②：検索結果ページ（およびその他のリスト構造）への対応
+    // ----------------------------------------------------
+    // 検索結果に挿入される様々な形式の棚を、タグ名およびタイトルテキストで判定して丸ごと非表示にする
+    const searchPageShelves = document.querySelectorAll('ytd-reel-shelf-renderer, grid-shelf-view-model, ytd-shelf-renderer');
+    searchPageShelves.forEach((shelf) => {
+      if (shelf.tagName.toLowerCase() === 'ytd-reel-shelf-renderer') {
+        // ショート専用のタグは無条件で非表示
         shelf.style.setProperty("display", "none", "important");
+      } else {
+        // それ以外の汎用棚は「ショート/Shorts」の文字が含まれる場合のみ非表示
+        const text = shelf.innerText || "";
+        if (text.includes("ショート") || text.toLowerCase().includes("shorts")) {
+          shelf.style.setProperty("display", "none", "important");
+        }
+      }
+    });
+
+    // ----------------------------------------------------
+    // 対応③：個別動画（検索結果や関連動画、登録チャンネルに単体で混ざるもの）
+    // ----------------------------------------------------
+    // サムネイルにショートマークがある、またはURLに /shorts/ を含む単体動画のカードを非表示にする
+    const individualShorts = document.querySelectorAll('[overlay-style="SHORTS"], a[href*="/shorts/"], a[href^="/shorts"]');
+    individualShorts.forEach((target) => {
+      const videoCard = target.closest(
+        "ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, ytd-reel-item-renderer, ytm-shorts-lockup-view-model-v2"
+      );
+      if (videoCard) {
+        videoCard.style.setProperty("display", "none", "important");
       }
     });
   };
 
-  // DOM変化を検知した時のコールバック
+  // 3. 監視メカニズム（MutationObserver + requestAnimationFrame）
   const observerCallback = () => {
-    // すでに実行待ちのフレームがある場合はスキップ（ブラウザの負荷を激減させる）
     if (isThrottled) return;
     isThrottled = true;
 
-    // 次の描画タイミング（1/60秒以内）でまとめて1回だけ実行
     requestAnimationFrame(() => {
       hideShorts();
       isThrottled = false;
     });
   };
 
-  // 監視のセットアップ
   const observer = new MutationObserver(observerCallback);
 
   const init = () => {
+    injectCSS();  // CSSを先行注入
     hideShorts(); // 初回実行
 
-    // body要素全体を対象に、子要素や階層の変化を監視開始
     observer.observe(document.body, {
       childList: true,
       subtree: true,
     });
   };
 
-  // bodyが存在するか確認して実行
   if (document.body) {
     init();
   } else {
