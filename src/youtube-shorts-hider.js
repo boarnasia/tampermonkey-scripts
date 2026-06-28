@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         YouTube Shorts Remover
+// @name         YouTube Shorts 非表示スクリプト
 // @namespace    http://yamashita109.com/
-// @version      1.2
+// @version      1.1
 // @description  MutationObserverで動的に出現するショート動画を確実に検知。requestAnimationFrameで負荷を抑えつつ完全に非表示にします。
 // @author       Masato Uehara
 // @updateURL    https://raw.githubusercontent.com/boarnasia/tampermonkey-scripts/main/src/youtube-shorts-hider.js
